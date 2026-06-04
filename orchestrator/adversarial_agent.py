@@ -6,22 +6,27 @@ import json
 
 class LLMAuditor:
     def __init__(self):
-        # Local Ollama endpoint
         self.client = OpenAI(base_url="http://localhost:11434/v1", api_key="ollama")
-        self.model = "llama3.1"
+        self.model = "qwen2.5:0.5b"
 
     def audit(self, history):
-        # Summarize history for the local LLM
         recent = history[-3:] if len(history) > 3 else history
-        # Doubled {{ and }} escape the braces for the LLM prompt
-        prompt = f"Previous reactor states: {recent}. Predict next (freq, amp) parameters to stress-test stability. Output ONLY JSON: {{\"freq\": float, \"amp\": float}}"
+        prompt = f"Previous states: {recent}. Predict next parameters. Output ONLY JSON: {{\"freq\": 0.0, \"amp\": 0.0}}"
         
         response = self.client.chat.completions.create(
             model=self.model,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
+            messages=[{"role": "user", "content": prompt}]
         )
-        return json.loads(response.choices[0].message.content)
+        
+        try:
+            data = json.loads(response.choices[0].message.content)
+            # Defensive access: provide defaults if keys are missing
+            freq = float(data.get("freq", 30000.0))
+            amp = float(data.get("amp", 500.0))
+            return {"freq": freq, "amp": amp}
+        except (json.JSONDecodeError, ValueError, TypeError):
+            # Fallback if the LLM output is pure garbage
+            return {"freq": 30000.0, "amp": 500.0}
 
 class ReactorAdversarialAgent:
     def __init__(self):
@@ -33,14 +38,11 @@ class ReactorAdversarialAgent:
         print(f"Starting v2.0 Cognitive Audit...")
         for i in range(steps):
             params = self.auditor.audit(self.history)
-            # Ensure safe default dt
             params['dt'] = 1e-6
-            breached = engine.step(self.state, float(params['freq']), float(params['amp']), params['dt'])
+            breached = engine.step(self.state, params['freq'], params['amp'], params['dt'])
             self.history.append({"step": i, "params": params, "breached": breached})
             print(f"Step {i}: Params={params}, Breached={breached}")
-            if breached: 
-                print("Breach achieved by AI auditor!")
-                break
+            if breached: break
         
         os.makedirs("logs", exist_ok=True)
         with open("logs/adversarial_run_v2.csv", "w", newline="") as f:

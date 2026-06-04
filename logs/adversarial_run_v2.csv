@@ -1,0 +1,7 @@
+step,params,breached
+0,"{'freq': 12.5, 'amp': 0.0, 'dt': 1e-06}",False
+1,"{'freq': 0.0, 'amp': 0.0, 'dt': 1e-06}",False
+2,"{'freq': 0.0, 'amp': 32.5, 'dt': 1e-06}",False
+3,"{'freq': 0.0, 'amp': -8.738750294531026e-08, 'dt': 1e-06}",False
+4,"{'freq': 30000.0, 'amp': 500.0, 'dt': 1e-06}",False
+5,"{'freq': 30000.0, 'amp': 500.0, 'dt': 1e-06}",True
